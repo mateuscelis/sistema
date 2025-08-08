@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Faturamento e Fluxo de Caixa</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-chart-line"></i> Gestão de Faturamento e Fluxo de Caixa</h1>
+                <p>Controle seus clientes, faturamentos e acompanhe seu fluxo de caixa</p>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="nav-tab" data-tab="clientes">
+                <i class="fas fa-users"></i> Clientes
+            </button>
+            <button class="nav-tab" data-tab="faturamento">
+                <i class="fas fa-file-invoice-dollar"></i> Faturamento
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card pending">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>A Receber</h3>
+                            <p class="stat-value" id="a-receber">R$ 0,00</p>
+                            <span class="stat-label">Valores pendentes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card overdue">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Vencido</h3>
+                            <p class="stat-value" id="vencido">R$ 0,00</p>
+                            <span class="stat-label">Valores em atraso</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card paid">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Recebido</h3>
+                            <p class="stat-value" id="recebido">R$ 0,00</p>
+                            <span class="stat-label">Valores pagos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card cancelled">
+                        <div class="stat-icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Cancelado</h3>
+                            <p class="stat-value" id="cancelado">R$ 0,00</p>
+                            <span class="stat-label">Valores cancelados</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-section">
+                    <h2><i class="fas fa-history"></i> Resumo de Faturamentos</h2>
+                    <p>Últimos faturamentos cadastrados</p>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Produto/Serviço</th>
+                                    <th>Valor</th>
+                                    <th>Vencimento</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-faturamentos">
+                                <!-- Dados serão carregados via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clientes Tab -->
+            <div id="clientes" class="tab-content">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-users"></i> Clientes</h2>
+                        <p>Gerencie seus clientes cadastrados</p>
+                    </div>
+                    <button class="btn btn-primary" id="novo-cliente-btn">
+                        <i class="fas fa-plus"></i> Novo Cliente
+                    </button>
+                </div>
+
+                <div class="clientes-grid" id="clientes-grid">
+                    <!-- Clientes serão carregados via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Faturamento Tab -->
+            <div id="faturamento" class="tab-content">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-file-invoice-dollar"></i> Faturamento</h2>
+                        <p>Gerencie seus faturamentos</p>
+                    </div>
+                    <button class="btn btn-primary" id="novo-faturamento-btn">
+                        <i class="fas fa-plus"></i> Novo Faturamento
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faturamentos-table">
+                            <!-- Dados serão carregados via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cliente Detail View -->
+            <div id="cliente-detail" class="tab-content">
+                <div class="detail-header">
+                    <button class="btn btn-secondary" id="voltar-clientes">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                    <div class="detail-title">
+                        <h2 id="cliente-nome">Nome do Cliente</h2>
+                        <p id="cliente-info">Informações do cliente</p>
+                    </div>
+                </div>
+
+                <div class="detail-tabs">
+                    <button class="detail-tab active" data-detail-tab="info">
+                        <i class="fas fa-info-circle"></i> Informações
+                    </button>
+                    <button class="detail-tab" data-detail-tab="produtos">
+                        <i class="fas fa-box"></i> Produtos/Serviços
+                    </button>
+                    <button class="detail-tab" data-detail-tab="anotacoes">
+                        <i class="fas fa-sticky-note"></i> Anotações
+                    </button>
+                    <button class="detail-tab" data-detail-tab="historico">
+                        <i class="fas fa-history"></i> Histórico
+                    </button>
+                </div>
+
+                <div class="detail-content">
+                    <div id="info-content" class="detail-tab-content active">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Nome:</label>
+                                <span id="info-nome">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Contato:</label>
+                                <span id="info-contato">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Email:</label>
+                                <span id="info-email">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Telefone:</label>
+                                <span id="info-telefone">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="produtos-content" class="detail-tab-content">
+                        <div class="section-header">
+                            <h3>Produtos/Serviços</h3>
+                            <button class="btn btn-primary btn-sm" id="novo-produto-btn">
+                                <i class="fas fa-plus"></i> Adicionar
+                            </button>
+                        </div>
+                        <div id="produtos-list" class="produtos-list">
+                            <!-- Produtos serão carregados via JavaScript -->
+                        </div>
+                    </div>
+
+                    <div id="anotacoes-content" class="detail-tab-content">
+                        <div class="section-header">
+                            <h3>Anotações</h3>
+                            <button class="btn btn-primary btn-sm" id="nova-anotacao-btn">
+                                <i class="fas fa-plus"></i> Nova Anotação
+                            </button>
+                        </div>
+                        <div id="anotacoes-list" class="anotacoes-list">
+                            <!-- Anotações serão carregadas via JavaScript -->
+                        </div>
+                    </div>
+
+                    <div id="historico-content" class="detail-tab-content">
+                        <h3>Histórico de Faturamento</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Descrição</th>
+                                        <th>Valor</th>
+                                        <th>Vencimento</th>
+                                        <th>Pagamento</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historico-faturamentos">
+                                    <!-- Histórico será carregado via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Título do Modal</h3>
+                <button class="modal-close" id="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Conteúdo do modal será inserido aqui -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
