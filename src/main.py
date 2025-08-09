@@ -24,7 +24,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirnam
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 with app.app_context():
+    db.drop_all() # Adicionado para recriar o banco de dados em cada deploy
     db.create_all()
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
