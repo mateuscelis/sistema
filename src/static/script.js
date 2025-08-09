@@ -105,9 +105,20 @@ async function apiCall(endpoint, method = 'GET', data = null) {
 
     try {
         const response = await fetch(`/api${endpoint}`, options);
+        
+        // Verificar se a resposta é bem-sucedida
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
+        // Verificar se a resposta é JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Response is not JSON:', text);
+            throw new Error('Server returned non-JSON response');
+        }
+        
         return await response.json();
     } catch (error) {
         console.error('API call failed:', error);
@@ -115,6 +126,7 @@ async function apiCall(endpoint, method = 'GET', data = null) {
         throw error;
     }
 }
+
 
 // Dashboard
 let currentDashboardMonth = new Date().getMonth() + 1;
