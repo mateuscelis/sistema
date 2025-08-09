@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from src.models.user import db
 from src.models.cliente import Cliente, ProdutoServico, Anotacao, Faturamento
 from datetime import datetime, date
@@ -160,22 +160,37 @@ def delete_anotacao(anotacao_id):
 # Rotas para Faturamento
 @cliente_bp.route('/clientes/<int:cliente_id>/faturamentos', methods=['POST'])
 def create_faturamento(cliente_id):
-    cliente = Cliente.query.get_or_404(cliente_id)
-    data = request.get_json()
-    
-    faturamento = Faturamento(
-        cliente_id=cliente_id,
-        produto_servico_id=data.get('produto_servico_id'),
-        descricao=data['descricao'],
-        valor=data['valor'],
-        data_vencimento=datetime.strptime(data['data_vencimento'], '%Y-%m-%d').date(),
-        status=data.get('status', 'pendente')
-    )
-    
-    db.session.add(faturamento)
-    db.session.commit()
-    
-    return jsonify(faturamento.to_dict()), 201
+    try:
+        cliente = Cliente.query.get_or_404(cliente_id)
+        data = request.get_json()
+        
+        # Log dos dados recebidos para debug
+        current_app.logger.info(f"Dados recebidos para faturamento: {data}")
+        
+        faturamento = Faturamento(
+            cliente_id=cliente_id,
+            produto_servico_id=data.get('produto_servico_id'),
+            descricao=data['descricao'],
+            valor=data['valor'],
+            data_vencimento=datetime.strptime(data['data_vencimento'], '%Y-%m-%d').date(),
+            status=data.get('status', 'pendente'),
+            tipo=data.get('tipo', 'unico'),
+            recorrencia=data.get('recorrencia'),
+            numero_parcelas=data.get('numero_parcelas'),
+            parcela_atual=data.get('parcela_atual', 1),
+            faturamento_pai_id=data.get('faturamento_pai_id')
+        )
+        
+        db.session.add(faturamento)
+        db.session.commit()
+        
+        current_app.logger.info(f"Faturamento criado com sucesso: {faturamento.id}")
+        return jsonify(faturamento.to_dict()), 201
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao criar faturamento: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao criar faturamento: {str(e)}'}), 500
 
 @cliente_bp.route('/faturamentos/<int:faturamento_id>', methods=['PUT'])
 def update_faturamento(faturamento_id):
@@ -332,26 +347,44 @@ def atualizar_resumo_mensal():
 def calcular_resumo_mensal(mes, ano):
     """Calcula o resumo mensal baseado nos faturamentos"""
     from sqlalchemy import and_, extract
-    
-    # Filtrar faturamentos do mês/ano específico
-    faturamentos = Faturamento.query.filter(
-        and_(
-            extract('month', Faturamento.data_vencimento) == mes,
-            extract('year', Faturamento.data_vencimento) == ano
-        )
-    ).all()
-    
-    total_recebido = sum(f.valor for f in faturamentos if f.status == 'pago')
-    total_pendente = sum(f.valor for f in faturamentos if f.status == 'pendente')
-    total_vencido = sum(f.valor for f in faturamentos if f.status == 'atrasado')
-    total_cancelado = sum(f.valor for f in faturamentos if f.status == 'cancelado')
-    
-    return {
-        'mes': mes,
-        'ano': ano,
-        'total_recebido': total_recebido,
-        'total_pendente': total_pendente,
-        'total_vencido': total_vencido,
-        'total_cancelado': total_cancelado
-    }
+    import logging
 
+    logging.basicConfig(level=logging.INFO)
+    current_app.logger.info(f"Calculando resumo para mes={mes}, ano={ano}")
+
+    try:
+        # Filtrar faturamentos do mês/ano específico
+        faturamentos = Faturamento.query.filter(
+            and_(
+                extract('month', Faturamento.data_vencimento) == mes,
+                extract('year', Faturamento.data_vencimento) == ano
+            )
+        ).all()
+        current_app.logger.info(f"Faturamentos encontrados: {len(faturamentos)}")
+
+        total_recebido = sum(f.valor for f in faturamentos if f.status == 'pago')
+        total_pendente = sum(f.valor for f in faturamentos if f.status == 'pendente')
+        total_vencido = sum(f.valor for f in faturamentos if f.status == 'atrasado')
+        total_cancelado = sum(f.valor for f in faturamentos if f.status == 'cancelado')
+        
+        current_app.logger.info(f"Totais: Recebido={total_recebido}, Pendente={total_pendente}, Vencido={total_vencido}, Cancelado={total_cancelado}")
+
+        return {
+            'mes': mes,
+            'ano': ano,
+            'total_recebido': total_recebido,
+            'total_pendente': total_pendente,
+            'total_vencido': total_vencido,
+            'total_cancelado': total_cancelado
+        }
+    except Exception as e:
+        current_app.logger.error(f"Erro ao calcular resumo mensal: {e}")
+        return {
+            'mes': mes,
+            'ano': ano,
+            'total_recebido': 0.0,
+            'total_pendente': 0.0,
+            'total_vencido': 0.0,
+            'total_cancelado': 0.0,
+            'error': str(e)
+        }
