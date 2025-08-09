@@ -388,12 +388,22 @@ async function loadFaturamentos() {
         
         // Collect all faturamentos from all clients
         for (const cliente of clientes) {
-            const clienteDetail = await apiCall(`/clientes/${cliente.id}`);
-            if (clienteDetail.faturamentos) {
-                clienteDetail.faturamentos.forEach(fat => {
-                    fat.cliente_nome = cliente.nome;
-                    allFaturamentos.push(fat);
-                });
+            try {
+                const clienteDetail = await apiCall(`/clientes/${cliente.id}`);
+                
+                // Verificar se clienteDetail existe e tem faturamentos
+                if (clienteDetail && clienteDetail.faturamentos && Array.isArray(clienteDetail.faturamentos)) {
+                    clienteDetail.faturamentos.forEach(fat => {
+                        if (fat) { // Verificar se o faturamento não é null
+                            fat.cliente_nome = cliente.nome;
+                            allFaturamentos.push(fat);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`Erro ao carregar detalhes do cliente ${cliente.id}:`, error);
+                // Continuar com o próximo cliente mesmo se houver erro
+                continue;
             }
         }
         
@@ -401,16 +411,20 @@ async function loadFaturamentos() {
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum faturamento encontrado</td></tr>';
         } else {
             // Sort by creation date
-            allFaturamentos.sort((a, b) => new Date(b.data_criacao) - new Date(a.data_criacao));
+            allFaturamentos.sort((a, b) => {
+                const dateA = a.data_criacao ? new Date(a.data_criacao) : new Date(0);
+                const dateB = b.data_criacao ? new Date(b.data_criacao) : new Date(0);
+                return dateB - dateA;
+            });
             
             allFaturamentos.forEach(fat => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${fat.cliente_nome}</td>
-                    <td>${fat.descricao}</td>
-                    <td>${formatCurrency(fat.valor)}</td>
-                    <td>${formatDate(fat.data_vencimento)}</td>
-                    <td><span class="status-badge status-${fat.status}">${fat.status}</span></td>
+                    <td>${fat.cliente_nome || 'Cliente não encontrado'}</td>
+                    <td>${fat.descricao || 'Sem descrição'}</td>
+                    <td>${formatCurrency(fat.valor || 0)}</td>
+                    <td>${fat.data_vencimento ? formatDate(fat.data_vencimento) : 'Sem data'}</td>
+                    <td><span class="status-badge status-${fat.status || 'pendente'}">${fat.status || 'pendente'}</span></td>
                     <td>
                         <div class="action-buttons">
                             <button class="btn-icon btn-edit" onclick="editFaturamento(${fat.id})">
@@ -427,8 +441,11 @@ async function loadFaturamentos() {
         }
     } catch (error) {
         console.error('Erro ao carregar faturamentos:', error);
+        const tbody = document.getElementById('faturamentos-table');
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Erro ao carregar faturamentos</td></tr>';
     }
 }
+
 
 // Modals
 function showModal(title, content) {
