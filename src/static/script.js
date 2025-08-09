@@ -127,7 +127,6 @@ async function apiCall(endpoint, method = 'GET', data = null) {
     }
 }
 
-
 // Dashboard
 let currentDashboardMonth = new Date().getMonth() + 1;
 let currentDashboardYear = new Date().getFullYear();
@@ -377,7 +376,7 @@ function loadHistoricoFaturamento(faturamentos) {
     }
 }
 
-// Faturamentos
+// Faturamentos - VERSÃO CORRIGIDA
 async function loadFaturamentos() {
     try {
         const clientes = await apiCall('/clientes');
@@ -446,7 +445,6 @@ async function loadFaturamentos() {
     }
 }
 
-
 // Modals
 function showModal(title, content) {
     document.getElementById('modal-title').textContent = title;
@@ -479,7 +477,7 @@ function showNovoClienteModal() {
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="submit" class="btn btn-primary">Salvar Cliente</button>
             </div>
         </form>
     `;
@@ -495,12 +493,87 @@ function showNovoClienteModal() {
         try {
             await apiCall('/clientes', 'POST', data);
             closeModal();
-            showNotification('Cliente cadastrado com sucesso!', 'success');
-            if (currentTab === 'clientes') {
-                loadClientes();
-            }
+            loadClientes();
+            showNotification('Cliente criado com sucesso!', 'success');
         } catch (error) {
-            showNotification('Erro ao cadastrar cliente', 'error');
+            showNotification('Erro ao criar cliente', 'error');
+        }
+    });
+}
+
+function showNovoFaturamentoModal() {
+    const content = `
+        <form id="faturamento-form">
+            <div class="form-group">
+                <label for="cliente_id">Cliente</label>
+                <select id="cliente_id" name="cliente_id" required>
+                    <option value="">Selecione um cliente</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="descricao">Descrição</label>
+                <input type="text" id="descricao" name="descricao" required>
+            </div>
+            <div class="form-group">
+                <label for="valor">Valor</label>
+                <input type="number" id="valor" name="valor" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo de Faturamento</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="unico">Único</option>
+                    <option value="recorrente">Recorrente</option>
+                    <option value="personalizado">Personalizado</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="recorrencia">Recorrência</label>
+                <select id="recorrencia" name="recorrencia">
+                    <option value="semanal">Semanal</option>
+                    <option value="quinzenal">Quinzenal</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="anual">Anual</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="data_vencimento">Data de Vencimento</label>
+                <input type="date" id="data_vencimento" name="data_vencimento" required>
+            </div>
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" required>
+                    <option value="pendente">Pendente</option>
+                    <option value="pago">Pago</option>
+                    <option value="atrasado">Atrasado</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Faturamento</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Novo Faturamento', content);
+    
+    // Load clientes for select
+    loadClientesSelect();
+    
+    document.getElementById('faturamento-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+        
+        try {
+            await apiCall('/faturamentos', 'POST', data);
+            closeModal();
+            loadFaturamentos();
+            loadDashboardData(); // Refresh dashboard
+            showNotification('Faturamento criado com sucesso!', 'success');
+        } catch (error) {
+            showNotification('Erro ao criar faturamento', 'error');
         }
     });
 }
@@ -524,7 +597,7 @@ function showNovoProdutoModal() {
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="submit" class="btn btn-primary">Salvar Produto</button>
             </div>
         </form>
     `;
@@ -536,15 +609,15 @@ function showNovoProdutoModal() {
         
         const formData = new FormData(this);
         const data = Object.fromEntries(formData);
-        data.valor = parseFloat(data.valor);
+        data.cliente_id = currentClient.id;
         
         try {
-            await apiCall(`/clientes/${currentClient.id}/produtos`, 'POST', data);
+            await apiCall('/produtos', 'POST', data);
             closeModal();
-            showNotification('Produto/Serviço cadastrado com sucesso!', 'success');
             loadClientDetail(currentClient.id);
+            showNotification('Produto criado com sucesso!', 'success');
         } catch (error) {
-            showNotification('Erro ao cadastrar produto/serviço', 'error');
+            showNotification('Erro ao criar produto', 'error');
         }
     });
 }
@@ -560,11 +633,11 @@ function showNovaAnotacaoModal() {
             </div>
             <div class="form-group">
                 <label for="conteudo">Conteúdo</label>
-                <textarea id="conteudo" name="conteudo" required rows="5"></textarea>
+                <textarea id="conteudo" name="conteudo" required></textarea>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="submit" class="btn btn-primary">Salvar Anotação</button>
             </div>
         </form>
     `;
@@ -576,303 +649,63 @@ function showNovaAnotacaoModal() {
         
         const formData = new FormData(this);
         const data = Object.fromEntries(formData);
+        data.cliente_id = currentClient.id;
         
         try {
-            await apiCall(`/clientes/${currentClient.id}/anotacoes`, 'POST', data);
+            await apiCall('/anotacoes', 'POST', data);
             closeModal();
-            showNotification('Anotação criada com sucesso!', 'success');
             loadClientDetail(currentClient.id);
+            showNotification('Anotação criada com sucesso!', 'success');
         } catch (error) {
             showNotification('Erro ao criar anotação', 'error');
         }
     });
 }
 
-async function showNovoFaturamentoModal() {
+async function loadClientesSelect() {
     try {
         const clientes = await apiCall('/clientes');
+        const select = document.getElementById('cliente_id');
         
-        const clientesOptions = clientes.map(cliente => 
-            `<option value="${cliente.id}">${cliente.nome}</option>`
-        ).join('');
-        
-        const content = `
-            <form id="faturamento-form">
-                <div class="form-group">
-                    <label for="cliente_id">Cliente</label>
-                    <select id="cliente_id" name="cliente_id" required>
-                        <option value="">Selecione um cliente</option>
-                        ${clientesOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="descricao">Descrição</label>
-                    <input type="text" id="descricao" name="descricao" required>
-                </div>
-                <div class="form-group">
-                    <label for="valor">Valor</label>
-                    <input type="number" id="valor" name="valor" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="tipo">Tipo de Faturamento</label>
-                    <select id="tipo" name="tipo" required onchange="toggleFaturamentoFields()">
-                        <option value="unico">Pagamento Único</option>
-                        <option value="recorrente">Recorrente</option>
-                        <option value="personalizado">Personalizado (Parcelas)</option>
-                    </select>
-                </div>
-                <div class="form-group" id="recorrencia-group" style="display: none;">
-                    <label for="recorrencia">Recorrência</label>
-                    <select id="recorrencia" name="recorrencia">
-                        <option value="">Selecione a recorrência</option>
-                        <option value="semanal">Semanal</option>
-                        <option value="quinzenal">Quinzenal</option>
-                        <option value="mensal">Mensal</option>
-                        <option value="anual">Anual</option>
-                    </select>
-                </div>
-                <div class="form-group" id="parcelas-group" style="display: none;">
-                    <label for="numero_parcelas">Número de Parcelas</label>
-                    <input type="number" id="numero_parcelas" name="numero_parcelas" min="2" max="60">
-                </div>
-                <div class="form-group">
-                    <label for="data_vencimento">Data de Vencimento</label>
-                    <input type="date" id="data_vencimento" name="data_vencimento" required>
-                </div>
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status" name="status">
-                        <option value="pendente">Pendente</option>
-                        <option value="pago">Pago</option>
-                        <option value="atrasado">Atrasado</option>
-                        <option value="cancelado">Cancelado</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
-                </div>
-            </form>
-        `;
-        
-        showModal('Novo Faturamento', content);
-        
-        document.getElementById('faturamento-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-            data.valor = parseFloat(data.valor);
-            data.cliente_id = parseInt(data.cliente_id);
-            
-            try {
-                await apiCall(`/clientes/${data.cliente_id}/faturamentos`, 'POST', data);
-                closeModal();
-                showNotification('Faturamento criado com sucesso!', 'success');
-                if (currentTab === 'faturamento') {
-                    loadFaturamentos();
-                }
-                if (currentTab === 'dashboard') {
-                    loadDashboardData();
-                }
-            } catch (error) {
-                showNotification('Erro ao criar faturamento', 'error');
-            }
+        clientes.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente.id;
+            option.textContent = cliente.nome;
+            select.appendChild(option);
         });
     } catch (error) {
-        showNotification('Erro ao carregar clientes', 'error');
+        console.error('Erro ao carregar clientes para select:', error);
     }
 }
 
-// Edit/Delete functions
-async function editProduto(id) {
-    try {
-        const produto = await apiCall(`/produtos/${id}`);
-        const content = `
-            <form id="edit-produto-form">
-                <div class="form-group">
-                    <label for="edit_nome_produto">Nome do Produto/Serviço</label>
-                    <input type="text" id="edit_nome_produto" name="nome" value="${produto.nome}" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit_descricao_produto">Descrição</label>
-                    <textarea id="edit_descricao_produto" name="descricao">${produto.descricao || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label for="edit_valor_produto">Valor</label>
-                    <input type="number" id="edit_valor_produto" name="valor" step="0.01" value="${produto.valor}" required>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                </div>
-            </form>
-        `;
-        showModal("Editar Produto/Serviço", content);
-
-        document.getElementById("edit-produto-form").addEventListener("submit", async function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-            data.valor = parseFloat(data.valor);
-
-            try {
-                await apiCall(`/produtos/${id}`, "PUT", data);
-                closeModal();
-                showNotification("Produto/Serviço atualizado com sucesso!", "success");
-                loadClientDetail(currentClient.id);
-            } catch (error) {
-                showNotification("Erro ao atualizar produto/serviço", "error");
-            }
-        });
-    } catch (error) {
-        showNotification("Erro ao carregar dados do produto/serviço", "error");
-    }
+// Utility functions
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
 }
 
-async function deleteProduto(id) {
-    if (confirm('Tem certeza que deseja excluir este produto/serviço?')) {
-        try {
-            await apiCall(`/produtos/${id}`, 'DELETE');
-            showNotification('Produto/Serviço excluído com sucesso!', 'success');
-            loadClientDetail(currentClient.id);
-        } catch (error) {
-            showNotification('Erro ao excluir produto/serviço', 'error');
-        }
-    }
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('pt-BR');
 }
 
-async function editAnotacao(id) {
-    try {
-        const anotacao = await apiCall(`/anotacoes/${id}`);
-        const content = `
-            <form id="edit-anotacao-form">
-                <div class="form-group">
-                    <label for="edit_titulo_anotacao">Título</label>
-                    <input type="text" id="edit_titulo_anotacao" name="titulo" value="${anotacao.titulo}" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit_conteudo_anotacao">Conteúdo</label>
-                    <textarea id="edit_conteudo_anotacao" name="conteudo" required rows="5">${anotacao.conteudo}</textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                </div>
-            </form>
-        `;
-        showModal("Editar Anotação", content);
-
-        document.getElementById("edit-anotacao-form").addEventListener("submit", async function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-
-            try {
-                await apiCall(`/anotacoes/${id}`, "PUT", data);
-                closeModal();
-                showNotification("Anotação atualizada com sucesso!", "success");
-                loadClientDetail(currentClient.id);
-            } catch (error) {
-                showNotification("Erro ao atualizar anotação", "error");
-            }
-        });
-    } catch (error) {
-        showNotification("Erro ao carregar dados da anotação", "error");
-    }
+function formatDateTime(dateString) {
+    return new Date(dateString).toLocaleString('pt-BR');
 }
 
-async function deleteAnotacao(id) {
-    if (confirm('Tem certeza que deseja excluir esta anotação?')) {
-        try {
-            await apiCall(`/anotacoes/${id}`, 'DELETE');
-            showNotification('Anotação excluída com sucesso!', 'success');
-            loadClientDetail(currentClient.id);
-        } catch (error) {
-            showNotification('Erro ao excluir anotação', 'error');
-        }
-    }
+function showNotification(message, type = 'info') {
+    // Simple notification - you can enhance this
+    alert(message);
 }
 
-async function editFaturamento(id) {
-    try {
-        const faturamento = await apiCall(`/faturamentos/${id}`);
-        const clientes = await apiCall("/clientes");
-        const clientesOptions = clientes.map(cliente => 
-            `<option value="${cliente.id}" ${cliente.id === faturamento.cliente_id ? "selected" : ""}>${cliente.nome}</option>`
-        ).join("");
-
-        const content = `
-            <form id="edit-faturamento-form">
-                <div class="form-group">
-                    <label for="edit_cliente_id">Cliente</label>
-                    <select id="edit_cliente_id" name="cliente_id" required disabled>
-                        ${clientesOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="edit_descricao_faturamento">Descrição</label>
-                    <input type="text" id="edit_descricao_faturamento" name="descricao" value="${faturamento.descricao}" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit_valor_faturamento">Valor</label>
-                    <input type="number" id="edit_valor_faturamento" name="valor" step="0.01" value="${faturamento.valor}" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit_data_vencimento_faturamento">Data de Vencimento</label>
-                    <input type="date" id="edit_data_vencimento_faturamento" name="data_vencimento" value="${faturamento.data_vencimento}" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit_status_faturamento">Status</label>
-                    <select id="edit_status_faturamento" name="status">
-                        <option value="pendente" ${faturamento.status === "pendente" ? "selected" : ""}>Pendente</option>
-                        <option value="pago" ${faturamento.status === "pago" ? "selected" : ""}>Pago</option>
-                        <option value="atrasado" ${faturamento.status === "atrasado" ? "selected" : ""}>Atrasado</option>
-                        <option value="cancelado" ${faturamento.status === "cancelado" ? "selected" : ""}>Cancelado</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                </div>
-            </form>
-        `;
-        showModal("Editar Faturamento", content);
-
-        document.getElementById("edit-faturamento-form").addEventListener("submit", async function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-            data.valor = parseFloat(data.valor);
-
-            try {
-                await apiCall(`/faturamentos/${id}`, "PUT", data);
-                closeModal();
-                showNotification("Faturamento atualizado com sucesso!", "success");
-                if (currentTab === "faturamento") {
-                    loadFaturamentos();
-                }
-                if (currentTab === "dashboard") {
-                    loadDashboardData();
-                }
-                if (currentClient) {
-                    loadClientDetail(currentClient.id);
-                }
-            } catch (error) {
-                showNotification("Erro ao atualizar faturamento", "error");
-            }
-        });
-    } catch (error) {
-        showNotification("Erro ao carregar dados do faturamento", "error");
-    }
-}
-
+// Delete functions
 async function deleteCliente(id) {
-    if (confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.')) {
+    if (confirm('Tem certeza que deseja excluir este cliente?')) {
         try {
             await apiCall(`/clientes/${id}`, 'DELETE');
-            showNotification('Cliente excluído com sucesso!', 'success');
             loadClientes();
+            showNotification('Cliente excluído com sucesso!', 'success');
         } catch (error) {
             showNotification('Erro ao excluir cliente', 'error');
         }
@@ -883,96 +716,48 @@ async function deleteFaturamento(id) {
     if (confirm('Tem certeza que deseja excluir este faturamento?')) {
         try {
             await apiCall(`/faturamentos/${id}`, 'DELETE');
+            loadFaturamentos();
+            loadDashboardData();
             showNotification('Faturamento excluído com sucesso!', 'success');
-            if (currentTab === 'faturamento') {
-                loadFaturamentos();
-            }
-            if (currentTab === 'dashboard') {
-                loadDashboardData();
-            }
         } catch (error) {
             showNotification('Erro ao excluir faturamento', 'error');
         }
     }
 }
 
-// Utility functions
-function formatCurrency(value) {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    }).format(value || 0);
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('pt-BR');
-}
-
-function formatDateTime(dateString) {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('pt-BR');
-}
-
-function showNotification(message, type = 'info') {
-    // Simple notification system
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem 2rem;
-        border-radius: 8px;
-        color: white;
-        font-weight: 600;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    switch(type) {
-        case 'success':
-            notification.style.background = '#38a169';
-            break;
-        case 'error':
-            notification.style.background = '#e53e3e';
-            break;
-        case 'info':
-            notification.style.background = '#3182ce';
-            break;
-    }
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
-}
-
-
-// Função para controlar campos do formulário de faturamento
-function toggleFaturamentoFields() {
-    const tipo = document.getElementById('tipo').value;
-    const recorrenciaGroup = document.getElementById('recorrencia-group');
-    const parcelasGroup = document.getElementById('parcelas-group');
-    const recorrenciaSelect = document.getElementById('recorrencia');
-    const parcelasInput = document.getElementById('numero_parcelas');
-    
-    // Reset visibility
-    recorrenciaGroup.style.display = 'none';
-    parcelasGroup.style.display = 'none';
-    
-    // Reset required attributes
-    recorrenciaSelect.removeAttribute('required');
-    parcelasInput.removeAttribute('required');
-    
-    if (tipo === 'recorrente') {
-        recorrenciaGroup.style.display = 'block';
-        recorrenciaSelect.setAttribute('required', 'required');
-    } else if (tipo === 'personalizado') {
-        parcelasGroup.style.display = 'block';
-        parcelasInput.setAttribute('required', 'required');
+async function deleteProduto(id) {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        try {
+            await apiCall(`/produtos/${id}`, 'DELETE');
+            loadClientDetail(currentClient.id);
+            showNotification('Produto excluído com sucesso!', 'success');
+        } catch (error) {
+            showNotification('Erro ao excluir produto', 'error');
+        }
     }
 }
 
+async function deleteAnotacao(id) {
+    if (confirm('Tem certeza que deseja excluir esta anotação?')) {
+        try {
+            await apiCall(`/anotacoes/${id}`, 'DELETE');
+            loadClientDetail(currentClient.id);
+            showNotification('Anotação excluída com sucesso!', 'success');
+        } catch (error) {
+            showNotification('Erro ao excluir anotação', 'error');
+        }
+    }
+}
+
+// Edit functions (placeholder)
+function editFaturamento(id) {
+    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+}
+
+function editProduto(id) {
+    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+}
+
+function editAnotacao(id) {
+    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+}
