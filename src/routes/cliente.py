@@ -267,40 +267,103 @@ def get_dashboard_stats():
         'ultimos_faturamentos': faturamentos_data
     })
 
-
-
 # Função para atualizar status de faturamentos atrasados
-@cliente_bp.route('/faturamentos/update-status', methods=['POST'])
+@cliente_bp.route("/faturamentos/update-status", methods=["POST"])
 def update_overdue_status():
     from datetime import date
-    
-    # Buscar faturamentos pendentes com data de vencimento passada
-    faturamentos_atrasados = Faturamento.query.filter(
-        Faturamento.status == 'pendente',
-        Faturamento.data_vencimento < date.today()
-    ).all()
-    
-    count = 0
-    for faturamento in faturamentos_atrasados:
-        faturamento.status = 'atrasado'
-        count += 1
-    
-    db.session.commit()
-    
-    return jsonify({
-        'message': f'{count} faturamentos atualizados para status atrasado',
-        'count': count
-    })
+    from src.models.cliente import Faturamento, db
 
+    try:
+        # Buscar faturamentos pendentes com data de vencimento passada
+        faturamentos_atrasados = Faturamento.query.filter(
+            Faturamento.status == "pendente",
+            Faturamento.data_vencimento < date.today()
+        ).all()
+        
+        count = 0
+        for faturamento in faturamentos_atrasados:
+            faturamento.status = "atrasado"
+            count += 1
+        
+        db.session.commit()
+        current_app.logger.info(f"{count} faturamentos atualizados para status atrasado")
+        return jsonify({
+            "message": f"{count} faturamentos atualizados para status atrasado",
+            "count": count
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao atualizar status de faturamentos atrasados: {str(e)}")
+        db.session.rollback()
+        return jsonify({"error": f"Erro ao atualizar status de faturamentos atrasados: {str(e)}"}), 500
+
+# Função para gerar cobranças recorrentes automaticamente
+@cliente_bp.route("/faturamentos/gerar-recorrentes", methods=["POST"])
+def gerar_faturamentos_recorrentes():
+    from datetime import timedelta
+    from src.models.cliente import Faturamento, db
+
+    try:
+        # Buscar faturamentos recorrentes que ainda não geraram a próxima instância
+        faturamentos_base = Faturamento.query.filter(
+            Faturamento.tipo == "recorrente",
+            Faturamento.status.in_(["pendente", "pago"])
+        ).all()
+
+        novos_faturamentos_gerados = []
+        for fat_base in faturamentos_base:
+            # Lógica para determinar a próxima data de vencimento
+            proxima_data_vencimento = None
+            if fat_base.recorrencia == "mensal":
+                # Adiciona um mês à data de vencimento atual
+                proxima_data_vencimento = fat_base.data_vencimento.replace(day=1) + timedelta(days=32)
+                proxima_data_vencimento = proxima_data_vencimento.replace(day=min(fat_base.data_vencimento.day, proxima_data_vencimento.day))
+            elif fat_base.recorrencia == "anual":
+                proxima_data_vencimento = fat_base.data_vencimento.replace(year=fat_base.data_vencimento.year + 1)
+
+            if proxima_data_vencimento and proxima_data_vencimento > date.today():
+                # Verifica se já existe um faturamento para essa próxima data
+                existe_proximo = Faturamento.query.filter(
+                    Faturamento.faturamento_pai_id == fat_base.id,
+                    Faturamento.data_vencimento == proxima_data_vencimento
+                ).first()
+
+                if not existe_proximo:
+                    novo_faturamento = Faturamento(
+                        cliente_id=fat_base.cliente_id,
+                        produto_servico_id=fat_base.produto_servico_id,
+                        descricao=fat_base.descricao,
+                        valor=fat_base.valor,
+                        data_vencimento=proxima_data_vencimento,
+                        status="pendente",
+                        tipo=fat_base.tipo,
+                        recorrencia=fat_base.recorrencia,
+                        numero_parcelas=fat_base.numero_parcelas,
+                        parcela_atual=fat_base.parcela_atual,
+                        faturamento_pai_id=fat_base.id
+                    )
+                    db.session.add(novo_faturamento)
+                    novos_faturamentos_gerados.append(novo_faturamento.to_dict())
+
+        db.session.commit()
+        current_app.logger.info(f"Gerados {len(novos_faturamentos_gerados)} novos faturamentos recorrentes.")
+        return jsonify({
+            "message": f"Gerados {len(novos_faturamentos_gerados)} novos faturamentos recorrentes.",
+            "count": len(novos_faturamentos_gerados),
+            "novos_faturamentos": novos_faturamentos_gerados
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao gerar faturamentos recorrentes: {str(e)}")
+        db.session.rollback()
+        return jsonify({"error": f"Erro ao gerar faturamentos recorrentes: {str(e)}"}), 500
 
 # Rotas para Resumo Mensal
-@cliente_bp.route('/resumo-mensal', methods=['GET'])
+@cliente_bp.route("/resumo-mensal", methods=["GET"])
 def get_resumo_mensal():
     from src.models.cliente import ResumoMensal
     
     # Pegar parâmetros de mês e ano (opcional)
-    mes = request.args.get('mes', type=int)
-    ano = request.args.get('ano', type=int)
+    mes = request.args.get("mes", type=int)
+    ano = request.args.get("ano", type=int)
     
     if mes and ano:
         # Buscar resumo específico
@@ -316,13 +379,13 @@ def get_resumo_mensal():
         resumos = ResumoMensal.query.order_by(ResumoMensal.ano.desc(), ResumoMensal.mes.desc()).limit(3).all()
         return jsonify([resumo.to_dict() for resumo in resumos])
 
-@cliente_bp.route('/resumo-mensal/atualizar', methods=['POST'])
+@cliente_bp.route("/resumo-mensal/atualizar", methods=["POST"])
 def atualizar_resumo_mensal():
     from src.models.cliente import ResumoMensal
     
     data = request.get_json()
-    mes = data.get('mes', datetime.now().month)
-    ano = data.get('ano', datetime.now().year)
+    mes = data.get("mes", datetime.now().month)
+    ano = data.get("ano", datetime.now().year)
     
     # Calcular resumo
     resumo_data = calcular_resumo_mensal(mes, ano)
@@ -334,10 +397,10 @@ def atualizar_resumo_mensal():
         db.session.add(resumo)
     
     # Atualizar valores
-    resumo.total_recebido = resumo_data['total_recebido']
-    resumo.total_pendente = resumo_data['total_pendente']
-    resumo.total_vencido = resumo_data['total_vencido']
-    resumo.total_cancelado = resumo_data['total_cancelado']
+    resumo.total_recebido = resumo_data["total_recebido"]
+    resumo.total_pendente = resumo_data["total_pendente"]
+    resumo.total_vencido = resumo_data["total_vencido"]
+    resumo.total_cancelado = resumo_data["total_cancelado"]
     resumo.data_atualizacao = datetime.utcnow()
     
     db.session.commit()
