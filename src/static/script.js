@@ -108,18 +108,21 @@ async function apiCall(endpoint, method = 'GET', data = null) {
         
         // Verificar se a resposta é bem-sucedida
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('Server error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         
-        // Verificar se a resposta é JSON
+        // Verificar se a resposta é JSON antes de tentar parsear
         const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
+        if (contentType && contentType.includes('application/json')) {
+            return await response.json();
+        } else {
+            // Se não for JSON, retornar o texto puro ou um objeto vazio
             const text = await response.text();
-            console.error('Response is not JSON:', text);
-            throw new Error('Server returned non-JSON response');
+            console.warn('Received non-JSON response:', text);
+            return {}; // Ou null, dependendo do que a função espera
         }
-        
-        return await response.json();
     } catch (error) {
         console.error('API call failed:', error);
         showNotification('Erro na comunicação com o servidor', 'error');
@@ -376,7 +379,7 @@ function loadHistoricoFaturamento(faturamentos) {
     }
 }
 
-// Faturamentos - VERSÃO CORRIGIDA
+// Faturamentos
 async function loadFaturamentos() {
     try {
         const clientes = await apiCall('/clientes');
@@ -387,22 +390,12 @@ async function loadFaturamentos() {
         
         // Collect all faturamentos from all clients
         for (const cliente of clientes) {
-            try {
-                const clienteDetail = await apiCall(`/clientes/${cliente.id}`);
-                
-                // Verificar se clienteDetail existe e tem faturamentos
-                if (clienteDetail && clienteDetail.faturamentos && Array.isArray(clienteDetail.faturamentos)) {
-                    clienteDetail.faturamentos.forEach(fat => {
-                        if (fat) { // Verificar se o faturamento não é null
-                            fat.cliente_nome = cliente.nome;
-                            allFaturamentos.push(fat);
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error(`Erro ao carregar detalhes do cliente ${cliente.id}:`, error);
-                // Continuar com o próximo cliente mesmo se houver erro
-                continue;
+            const clienteDetail = await apiCall(`/clientes/${cliente.id}`);
+            if (clienteDetail.faturamentos) {
+                clienteDetail.faturamentos.forEach(fat => {
+                    fat.cliente_nome = cliente.nome;
+                    allFaturamentos.push(fat);
+                });
             }
         }
         
@@ -410,20 +403,16 @@ async function loadFaturamentos() {
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum faturamento encontrado</td></tr>';
         } else {
             // Sort by creation date
-            allFaturamentos.sort((a, b) => {
-                const dateA = a.data_criacao ? new Date(a.data_criacao) : new Date(0);
-                const dateB = b.data_criacao ? new Date(b.data_criacao) : new Date(0);
-                return dateB - dateA;
-            });
+            allFaturamentos.sort((a, b) => new Date(b.data_criacao) - new Date(a.data_criacao));
             
             allFaturamentos.forEach(fat => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${fat.cliente_nome || 'Cliente não encontrado'}</td>
-                    <td>${fat.descricao || 'Sem descrição'}</td>
-                    <td>${formatCurrency(fat.valor || 0)}</td>
-                    <td>${fat.data_vencimento ? formatDate(fat.data_vencimento) : 'Sem data'}</td>
-                    <td><span class="status-badge status-${fat.status || 'pendente'}">${fat.status || 'pendente'}</span></td>
+                    <td>${fat.cliente_nome}</td>
+                    <td>${fat.descricao}</td>
+                    <td>${formatCurrency(fat.valor)}</td>
+                    <td>${formatDate(fat.data_vencimento)}</td>
+                    <td><span class="status-badge status-${fat.status}">${fat.status}</span></td>
                     <td>
                         <div class="action-buttons">
                             <button class="btn-icon btn-edit" onclick="editFaturamento(${fat.id})">
@@ -440,8 +429,6 @@ async function loadFaturamentos() {
         }
     } catch (error) {
         console.error('Erro ao carregar faturamentos:', error);
-        const tbody = document.getElementById('faturamentos-table');
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Erro ao carregar faturamentos</td></tr>';
     }
 }
 
@@ -519,34 +506,39 @@ function showNovoFaturamentoModal() {
                 <input type="number" id="valor" name="valor" step="0.01" required>
             </div>
             <div class="form-group">
+                <label for="data_vencimento">Data de Vencimento</label>
+                <input type="date" id="data_vencimento" name="data_vencimento" required>
+            </div>
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="pendente">Pendente</option>
+                    <option value="pago">Pago</option>
+                    <option value="atrasado">Atrasado</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="tipo">Tipo de Faturamento</label>
-                <select id="tipo" name="tipo" required>
+                <select id="tipo" name="tipo">
                     <option value="unico">Único</option>
                     <option value="recorrente">Recorrente</option>
                     <option value="personalizado">Personalizado</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="recorrencia-group" style="display:none;">
                 <label for="recorrencia">Recorrência</label>
                 <select id="recorrencia" name="recorrencia">
+                    <option value="">Selecione</option>
                     <option value="semanal">Semanal</option>
                     <option value="quinzenal">Quinzenal</option>
                     <option value="mensal">Mensal</option>
                     <option value="anual">Anual</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label for="data_vencimento">Data de Vencimento</label>
-                <input type="date" id="data_vencimento" name="data_vencimento" required>
-            </div>
-            <div class="form-group">
-                <label for="status">Status</label>
-                <select id="status" name="status" required>
-                    <option value="pendente">Pendente</option>
-                    <option value="pago">Pago</option>
-                    <option value="atrasado">Atrasado</option>
-                    <option value="cancelado">Cancelado</option>
-                </select>
+            <div class="form-group" id="parcelas-group" style="display:none;">
+                <label for="numero_parcelas">Número de Parcelas</label>
+                <input type="number" id="numero_parcelas" name="numero_parcelas" min="1">
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -557,151 +549,51 @@ function showNovoFaturamentoModal() {
     
     showModal('Novo Faturamento', content);
     
-    // Load clientes for select
-    loadClientesSelect();
-    
-    document.getElementById('faturamento-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-        
-        try {
-            await apiCall('/faturamentos', 'POST', data);
-            closeModal();
-            loadFaturamentos();
-            loadDashboardData(); // Refresh dashboard
-            showNotification('Faturamento criado com sucesso!', 'success');
-        } catch (error) {
-            showNotification('Erro ao criar faturamento', 'error');
-        }
-    });
-}
-
-function showNovoProdutoModal() {
-    if (!currentClient) return;
-    
-    const content = `
-        <form id="produto-form">
-            <div class="form-group">
-                <label for="nome">Nome do Produto/Serviço</label>
-                <input type="text" id="nome" name="nome" required>
-            </div>
-            <div class="form-group">
-                <label for="descricao">Descrição</label>
-                <textarea id="descricao" name="descricao"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="valor">Valor</label>
-                <input type="number" id="valor" name="valor" step="0.01" required>
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar Produto</button>
-            </div>
-        </form>
-    `;
-    
-    showModal('Novo Produto/Serviço', content);
-    
-    document.getElementById('produto-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-        data.cliente_id = currentClient.id;
-        
-        try {
-            await apiCall('/produtos', 'POST', data);
-            closeModal();
-            loadClientDetail(currentClient.id);
-            showNotification('Produto criado com sucesso!', 'success');
-        } catch (error) {
-            showNotification('Erro ao criar produto', 'error');
-        }
-    });
-}
-
-function showNovaAnotacaoModal() {
-    if (!currentClient) return;
-    
-    const content = `
-        <form id="anotacao-form">
-            <div class="form-group">
-                <label for="titulo">Título</label>
-                <input type="text" id="titulo" name="titulo" required>
-            </div>
-            <div class="form-group">
-                <label for="conteudo">Conteúdo</label>
-                <textarea id="conteudo" name="conteudo" required></textarea>
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar Anotação</button>
-            </div>
-        </form>
-    `;
-    
-    showModal('Nova Anotação', content);
-    
-    document.getElementById('anotacao-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-        data.cliente_id = currentClient.id;
-        
-        try {
-            await apiCall('/anotacoes', 'POST', data);
-            closeModal();
-            loadClientDetail(currentClient.id);
-            showNotification('Anotação criada com sucesso!', 'success');
-        } catch (error) {
-            showNotification('Erro ao criar anotação', 'error');
-        }
-    });
-}
-
-async function loadClientesSelect() {
-    try {
-        const clientes = await apiCall('/clientes');
+    // Load clients for the select input
+    apiCall('/clientes').then(clientes => {
         const select = document.getElementById('cliente_id');
-        
         clientes.forEach(cliente => {
             const option = document.createElement('option');
             option.value = cliente.id;
             option.textContent = cliente.nome;
             select.appendChild(option);
         });
-    } catch (error) {
-        console.error('Erro ao carregar clientes para select:', error);
-    }
-}
+    }).catch(error => {
+        console.error('Erro ao carregar clientes para o formulário de faturamento:', error);
+        showNotification('Erro ao carregar clientes', 'error');
+    });
 
-// Utility functions
-function formatCurrency(value) {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    }).format(value);
-}
+    // Handle 'tipo' change for recurrence and installments
+    document.getElementById('tipo').addEventListener('change', function() {
+        const tipo = this.value;
+        document.getElementById('recorrencia-group').style.display = tipo === 'recorrente' ? 'block' : 'none';
+        document.getElementById('parcelas-group').style.display = tipo === 'personalizado' ? 'block' : 'none';
+    });
 
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-}
-
-function formatDateTime(dateString) {
-    return new Date(dateString).toLocaleString('pt-BR');
-}
-
-function showNotification(message, type = 'info') {
-    // Simple notification - you can enhance this
-    alert(message);
+    document.getElementById('faturamento-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+        
+        // Ensure numeric values are parsed correctly
+        data.valor = parseFloat(data.valor);
+        if (data.numero_parcelas) data.numero_parcelas = parseInt(data.numero_parcelas);
+        
+        try {
+            await apiCall(`/clientes/${data.cliente_id}/faturamentos`, 'POST', data);
+            closeModal();
+            loadFaturamentos();
+            showNotification('Faturamento criado com sucesso!', 'success');
+        } catch (error) {
+            showNotification(`Erro ao criar faturamento: ${error.message}`, 'error');
+        }
+    });
 }
 
 // Delete functions
 async function deleteCliente(id) {
-    if (confirm('Tem certeza que deseja excluir este cliente?')) {
+    if (confirm('Tem certeza que deseja excluir este cliente e todos os seus dados relacionados?')) {
         try {
             await apiCall(`/clientes/${id}`, 'DELETE');
             loadClientes();
@@ -712,27 +604,14 @@ async function deleteCliente(id) {
     }
 }
 
-async function deleteFaturamento(id) {
-    if (confirm('Tem certeza que deseja excluir este faturamento?')) {
-        try {
-            await apiCall(`/faturamentos/${id}`, 'DELETE');
-            loadFaturamentos();
-            loadDashboardData();
-            showNotification('Faturamento excluído com sucesso!', 'success');
-        } catch (error) {
-            showNotification('Erro ao excluir faturamento', 'error');
-        }
-    }
-}
-
 async function deleteProduto(id) {
-    if (confirm('Tem certeza que deseja excluir este produto?')) {
+    if (confirm('Tem certeza que deseja excluir este produto/serviço?')) {
         try {
             await apiCall(`/produtos/${id}`, 'DELETE');
-            loadClientDetail(currentClient.id);
-            showNotification('Produto excluído com sucesso!', 'success');
+            loadClientDetail(currentClient.id); // Reload client detail to update product list
+            showNotification('Produto/Serviço excluído com sucesso!', 'success');
         } catch (error) {
-            showNotification('Erro ao excluir produto', 'error');
+            showNotification('Erro ao excluir produto/serviço', 'error');
         }
     }
 }
@@ -741,7 +620,7 @@ async function deleteAnotacao(id) {
     if (confirm('Tem certeza que deseja excluir esta anotação?')) {
         try {
             await apiCall(`/anotacoes/${id}`, 'DELETE');
-            loadClientDetail(currentClient.id);
+            loadClientDetail(currentClient.id); // Reload client detail to update annotation list
             showNotification('Anotação excluída com sucesso!', 'success');
         } catch (error) {
             showNotification('Erro ao excluir anotação', 'error');
@@ -749,15 +628,56 @@ async function deleteAnotacao(id) {
     }
 }
 
-// Edit functions (placeholder)
-function editFaturamento(id) {
-    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+async function deleteFaturamento(id) {
+    if (confirm('Tem certeza que deseja excluir este faturamento?')) {
+        try {
+            await apiCall(`/faturamentos/${id}`, 'DELETE');
+            loadFaturamentos(); // Reload main faturamentos list
+            if (currentClient) {
+                loadClientDetail(currentClient.id); // Reload client detail if open
+            }
+            showNotification('Faturamento excluído com sucesso!', 'success');
+        } catch (error) {
+            showNotification('Erro ao excluir faturamento', 'error');
+        }
+    }
 }
 
+// Helper functions
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString + 'T00:00:00'); // Add T00:00:00 to avoid timezone issues
+    return date.toLocaleDateString('pt-BR');
+}
+
+function formatDateTime(dateTimeString) {
+    if (!dateTimeString) return '-';
+    const date = new Date(dateTimeString);
+    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+}
+
+function showNotification(message, type) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type} show`;
+    setTimeout(() => {
+        notification.className = 'notification';
+    }, 3000);
+}
+
+// Edit functions (placeholders)
 function editProduto(id) {
-    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+    showNotification("Funcionalidade de edição em desenvolvimento", "info");
 }
 
 function editAnotacao(id) {
-    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+    showNotification("Funcionalidade de edição em desenvolvimento", "info");
+}
+
+function editFaturamento(id) {
+    showNotification("Funcionalidade de edição em desenvolvimento", "info");
 }
