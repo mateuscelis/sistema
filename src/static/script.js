@@ -754,6 +754,7 @@ function showNovoProdutoModal() {
             await apiCall(`/clientes/${currentClient.id}/produtos`, 'POST', data);
             closeModal();
             showNotification('Produto/Serviço adicionado com sucesso!', 'success');
+            // Recarregar os detalhes do cliente para atualizar a lista
             loadClientDetail(currentClient.id);
         } catch (error) {
             showNotification('Erro ao adicionar produto/serviço', 'error');
@@ -799,11 +800,113 @@ function showNovaAnotacaoModal() {
             await apiCall(`/clientes/${currentClient.id}/anotacoes`, 'POST', data);
             closeModal();
             showNotification('Anotação adicionada com sucesso!', 'success');
+            // Recarregar os detalhes do cliente para atualizar a lista
             loadClientDetail(currentClient.id);
         } catch (error) {
             showNotification('Erro ao adicionar anotação', 'error');
         }
     });
+}
+
+// Função para editar produto
+async function editProduto(produtoId) {
+    try {
+        const produto = await apiCall(`/produtos/${produtoId}`);
+        
+        const content = `
+            <form id="edit-produto-form">
+                <div class="form-group">
+                    <label for="edit-produto-nome">Nome do Produto/Serviço</label>
+                    <input type="text" id="edit-produto-nome" value="${produto.nome}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-produto-descricao">Descrição</label>
+                    <textarea id="edit-produto-descricao" rows="3">${produto.descricao || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-produto-valor">Valor</label>
+                    <input type="number" id="edit-produto-valor" step="0.01" value="${produto.valor}" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        `;
+        
+        showModal('Editar Produto/Serviço', content);
+        
+        document.getElementById('edit-produto-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                nome: document.getElementById('edit-produto-nome').value,
+                descricao: document.getElementById('edit-produto-descricao').value,
+                valor: parseFloat(document.getElementById('edit-produto-valor').value)
+            };
+            
+            try {
+                await apiCall(`/produtos/${produtoId}`, 'PUT', data);
+                closeModal();
+                showNotification('Produto/Serviço atualizado com sucesso!', 'success');
+                // Recarregar os detalhes do cliente para atualizar a lista
+                loadClientDetail(currentClient.id);
+            } catch (error) {
+                showNotification('Erro ao atualizar produto/serviço', 'error');
+            }
+        });
+        
+    } catch (error) {
+        showNotification('Erro ao carregar dados do produto/serviço', 'error');
+    }
+}
+
+// Função para editar anotação
+async function editAnotacao(anotacaoId) {
+    try {
+        const anotacao = await apiCall(`/anotacoes/${anotacaoId}`);
+        
+        const content = `
+            <form id="edit-anotacao-form">
+                <div class="form-group">
+                    <label for="edit-anotacao-titulo">Título</label>
+                    <input type="text" id="edit-anotacao-titulo" value="${anotacao.titulo}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-anotacao-conteudo">Conteúdo</label>
+                    <textarea id="edit-anotacao-conteudo" rows="5" required>${anotacao.conteudo}</textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        `;
+        
+        showModal('Editar Anotação', content);
+        
+        document.getElementById('edit-anotacao-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                titulo: document.getElementById('edit-anotacao-titulo').value,
+                conteudo: document.getElementById('edit-anotacao-conteudo').value
+            };
+            
+            try {
+                await apiCall(`/anotacoes/${anotacaoId}`, 'PUT', data);
+                closeModal();
+                showNotification('Anotação atualizada com sucesso!', 'success');
+                // Recarregar os detalhes do cliente para atualizar a lista
+                loadClientDetail(currentClient.id);
+            } catch (error) {
+                showNotification('Erro ao atualizar anotação', 'error');
+            }
+        });
+        
+    } catch (error) {
+        showNotification('Erro ao carregar dados da anotação', 'error');
+    }
 }
 
 
