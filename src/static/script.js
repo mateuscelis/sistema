@@ -643,6 +643,170 @@ async function deleteFaturamento(id) {
     }
 }
 
+// Função para editar faturamento
+async function editFaturamento(faturamentoId) {
+    try {
+        const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
+        
+        const content = `
+            <form id="edit-faturamento-form">
+                <div class="form-group">
+                    <label for="edit-faturamento-descricao">Descrição</label>
+                    <input type="text" id="edit-faturamento-descricao" value="${faturamento.descricao}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-faturamento-valor">Valor</label>
+                    <input type="number" id="edit-faturamento-valor" step="0.01" value="${faturamento.valor}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-faturamento-vencimento">Data de Vencimento</label>
+                    <input type="date" id="edit-faturamento-vencimento" value="${faturamento.data_vencimento}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-faturamento-status">Status</label>
+                    <select id="edit-faturamento-status" required>
+                        <option value="pendente" ${faturamento.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                        <option value="pago" ${faturamento.status === 'pago' ? 'selected' : ''}>Pago</option>
+                        <option value="atrasado" ${faturamento.status === 'atrasado' ? 'selected' : ''}>Atrasado</option>
+                        <option value="cancelado" ${faturamento.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        `;
+        
+        showModal('Editar Faturamento', content);
+        
+        document.getElementById('edit-faturamento-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                descricao: document.getElementById('edit-faturamento-descricao').value,
+                valor: parseFloat(document.getElementById('edit-faturamento-valor').value),
+                data_vencimento: document.getElementById('edit-faturamento-vencimento').value,
+                status: document.getElementById('edit-faturamento-status').value
+            };
+            
+            try {
+                await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
+                closeModal();
+                showNotification('Faturamento atualizado com sucesso!', 'success');
+                
+                // Recarregar dados dependendo da aba atual
+                if (currentTab === 'faturamento') {
+                    loadFaturamentos();
+                } else if (currentClient) {
+                    loadClientDetail(currentClient.id);
+                }
+            } catch (error) {
+                showNotification('Erro ao atualizar faturamento', 'error');
+            }
+        });
+        
+    } catch (error) {
+        showNotification('Erro ao carregar dados do faturamento', 'error');
+    }
+}
+
+// Função para mostrar modal de novo produto
+function showNovoProdutoModal() {
+    if (!currentClient) {
+        showNotification('Erro: Cliente não selecionado', 'error');
+        return;
+    }
+    
+    const content = `
+        <form id="novo-produto-form">
+            <div class="form-group">
+                <label for="produto-nome">Nome do Produto/Serviço</label>
+                <input type="text" id="produto-nome" required>
+            </div>
+            <div class="form-group">
+                <label for="produto-descricao">Descrição</label>
+                <textarea id="produto-descricao" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="produto-valor">Valor</label>
+                <input type="number" id="produto-valor" step="0.01" required>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Adicionar</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Novo Produto/Serviço', content);
+    
+    document.getElementById('novo-produto-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = {
+            nome: document.getElementById('produto-nome').value,
+            descricao: document.getElementById('produto-descricao').value,
+            valor: parseFloat(document.getElementById('produto-valor').value)
+        };
+        
+        try {
+            await apiCall(`/clientes/${currentClient.id}/produtos`, 'POST', data);
+            closeModal();
+            showNotification('Produto/Serviço adicionado com sucesso!', 'success');
+            loadClientDetail(currentClient.id);
+        } catch (error) {
+            showNotification('Erro ao adicionar produto/serviço', 'error');
+        }
+    });
+}
+
+// Função para mostrar modal de nova anotação
+function showNovaAnotacaoModal() {
+    if (!currentClient) {
+        showNotification('Erro: Cliente não selecionado', 'error');
+        return;
+    }
+    
+    const content = `
+        <form id="nova-anotacao-form">
+            <div class="form-group">
+                <label for="anotacao-titulo">Título</label>
+                <input type="text" id="anotacao-titulo" required>
+            </div>
+            <div class="form-group">
+                <label for="anotacao-conteudo">Conteúdo</label>
+                <textarea id="anotacao-conteudo" rows="5" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Adicionar</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Nova Anotação', content);
+    
+    document.getElementById('nova-anotacao-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = {
+            titulo: document.getElementById('anotacao-titulo').value,
+            conteudo: document.getElementById('anotacao-conteudo').value
+        };
+        
+        try {
+            await apiCall(`/clientes/${currentClient.id}/anotacoes`, 'POST', data);
+            closeModal();
+            showNotification('Anotação adicionada com sucesso!', 'success');
+            loadClientDetail(currentClient.id);
+        } catch (error) {
+            showNotification('Erro ao adicionar anotação', 'error');
+        }
+    });
+}
+
+
 // Helper functions
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
