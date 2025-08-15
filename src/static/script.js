@@ -1078,6 +1078,74 @@ async function editAnotacao(anotacaoId) {
     }
 }
 
+// Função para editar faturamento (DAR BAIXA)
+async function editFaturamento(faturamentoId) {
+    try {
+        const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
+        
+        const content = `
+            <form id="edit-faturamento-form">
+                <div class="form-group">
+                    <label for="edit-faturamento-descricao">Descrição</label>
+                    <input type="text" id="edit-faturamento-descricao" value="${faturamento.descricao}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-faturamento-valor">Valor</label>
+                    <input type="number" id="edit-faturamento-valor" step="0.01" value="${faturamento.valor}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-faturamento-vencimento">Data de Vencimento</label>
+                    <input type="date" id="edit-faturamento-vencimento" value="${faturamento.data_vencimento}" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-faturamento-status">Status</label>
+                    <select id="edit-faturamento-status" required>
+                        <option value="pendente" ${faturamento.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                        <option value="pago" ${faturamento.status === 'pago' ? 'selected' : ''}>Pago</option>
+                        <option value="atrasado" ${faturamento.status === 'atrasado' ? 'selected' : ''}>Atrasado</option>
+                        <option value="cancelado" ${faturamento.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        `;
+        
+        showModal('Editar Faturamento', content);
+        
+        document.getElementById('edit-faturamento-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                descricao: document.getElementById('edit-faturamento-descricao').value,
+                valor: parseFloat(document.getElementById('edit-faturamento-valor').value),
+                data_vencimento: document.getElementById('edit-faturamento-vencimento').value,
+                status: document.getElementById('edit-faturamento-status').value
+            };
+            
+            try {
+                await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
+                closeModal();
+                showNotification('Faturamento atualizado com sucesso!', 'success');
+                
+                // Recarregar dados dependendo da aba atual
+                if (currentTab === 'faturamento') {
+                    loadFaturamentos();
+                } else if (currentClient) {
+                    loadClientDetail(currentClient.id);
+                }
+            } catch (error) {
+                showNotification('Erro ao atualizar faturamento', 'error');
+            }
+        });
+        
+    } catch (error) {
+        showNotification('Erro ao carregar dados do faturamento', 'error');
+    }
+}
+
 
 // Helper functions
 function formatCurrency(value) {
