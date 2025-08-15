@@ -271,6 +271,66 @@ def get_dashboard_stats():
         "ultimos_faturamentos": faturamentos_data
     })
 
+    # Rotas para produtos individuais
+@cliente_bp.route('/produtos/<int:produto_id>', methods=['GET'])
+def get_produto(produto_id):
+    produto = ProdutoServico.query.get_or_404(produto_id)
+    return jsonify(produto.to_dict())
+
+@cliente_bp.route('/produtos/<int:produto_id>', methods=['PUT'])
+def update_produto(produto_id):
+    produto = ProdutoServico.query.get_or_404(produto_id)
+    data = request.get_json()
+    
+    produto.nome = data['nome']
+    produto.descricao = data.get('descricao', '')
+    produto.valor = float(data['valor'])
+    
+    db.session.commit()
+    return jsonify(produto.to_dict())
+
+# Rotas para anotações individuais
+@cliente_bp.route('/anotacoes/<int:anotacao_id>', methods=['GET'])
+def get_anotacao(anotacao_id):
+    anotacao = Anotacao.query.get_or_404(anotacao_id)
+    return jsonify(anotacao.to_dict())
+
+@cliente_bp.route('/anotacoes/<int:anotacao_id>', methods=['PUT'])
+def update_anotacao(anotacao_id):
+    anotacao = Anotacao.query.get_or_404(anotacao_id)
+    data = request.get_json()
+    
+    anotacao.titulo = data['titulo']
+    anotacao.conteudo = data['conteudo']
+    
+    db.session.commit()
+    return jsonify(anotacao.to_dict())
+
+# Rota para faturamento individual
+@cliente_bp.route('/faturamentos/<int:faturamento_id>', methods=['GET'])
+def get_faturamento(faturamento_id):
+    faturamento = Faturamento.query.get_or_404(faturamento_id)
+    return jsonify(faturamento.to_dict())
+
+@cliente_bp.route('/faturamentos/<int:faturamento_id>', methods=['PUT'])
+def update_faturamento(faturamento_id):
+    faturamento = Faturamento.query.get_or_404(faturamento_id)
+    data = request.get_json()
+    
+    faturamento.descricao = data['descricao']
+    faturamento.valor = float(data['valor'])
+    faturamento.data_vencimento = datetime.strptime(data['data_vencimento'], '%Y-%m-%d').date()
+    faturamento.status = data['status']
+    
+    if data['status'] == 'pago' and not faturamento.data_pagamento:
+        faturamento.data_pagamento = date.today()
+    elif data['status'] != 'pago':
+        faturamento.data_pagamento = None
+    
+    db.session.commit()
+    return jsonify(faturamento.to_dict())
+
+
 # Rotas para Resumo Mensal
 @cliente_bp.route("/resumo-mensal", methods=["GET"])
 def get_resumo_mensal():

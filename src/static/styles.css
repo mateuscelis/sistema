@@ -1086,3 +1086,189 @@ body {
 .modal-body select:focus {
     border-color: #667eea !important;
 }
+
+/* Melhorar contraste geral das subpáginas */
+.detail-content {
+    background: white !important;
+    color: #2d3748 !important;
+}
+
+.detail-content h2,
+.detail-content h3,
+.detail-content h4 {
+    color: #2d3748 !important;
+    font-weight: 600;
+}
+
+.detail-content p,
+.detail-content span,
+.detail-content div {
+    color: #4a5568 !important;
+}
+
+/* Melhorar contraste das abas de detalhes */
+.detail-tab {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #4a5568 !important;
+    font-weight: 600;
+    border: 2px solid transparent;
+}
+
+.detail-tab:hover {
+    color: #667eea !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+    border-color: #667eea;
+}
+
+.detail-tab.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+}
+
+/* Melhorar contraste dos títulos das seções */
+.section-header h2,
+.section-header h3 {
+    color: #2d3748 !important;
+    font-weight: 600;
+}
+
+/* Melhorar contraste dos botões de ação */
+.btn-edit {
+    background: #e6fffa !important;
+    color: #319795 !important;
+    border: 1px solid #319795;
+}
+
+.btn-edit:hover {
+    background: #319795 !important;
+    color: white !important;
+}
+
+.btn-delete {
+    background: #fed7d7 !important;
+    color: #e53e3e !important;
+    border: 1px solid #e53e3e;
+}
+
+.btn-delete:hover {
+    background: #e53e3e !important;
+    color: white !important;
+}
+
+/* Melhorar contraste das tabelas de histórico */
+.data-table tbody tr {
+    color: #2d3748 !important;
+}
+
+.data-table tbody td {
+    color: #2d3748 !important;
+    font-weight: 500;
+}
+
+/* Melhorar contraste dos modais */
+.modal-body {
+    color: #2d3748 !important;
+}
+
+.modal-body label {
+    color: #2d3748 !important;
+    font-weight: 600;
+}
+
+.modal-body input,
+.modal-body textarea,
+.modal-body select {
+    color: #2d3748 !important;
+    background: white !important;
+    border: 2px solid #e2e8f0 !important;
+}
+
+.modal-body input:focus,
+.modal-body textarea:focus,
+.modal-body select:focus {
+    border-color: #667eea !important;
+}
+
+/* Melhorar contraste dos produtos e anotações */
+.produto-item,
+.anotacao-item {
+    background: #f7fafc !important;
+    color: #2d3748 !important;
+}
+
+.produto-item h4,
+.anotacao-item h4 {
+    color: #2d3748 !important;
+    font-weight: 600;
+}
+
+.produto-item p,
+.anotacao-item .anotacao-conteudo {
+    color: #4a5568 !important;
+    font-weight: 500;
+}
+
+.produto-valor {
+    color: #667eea !important;
+    font-weight: 700;
+}
+
+.anotacao-data {
+    color: #718096 !important;
+    font-weight: 500;
+}
+
+/* Melhorar contraste das informações do cliente */
+.info-item label {
+    color: #2d3748 !important;
+    font-weight: 600;
+}
+
+.info-item span {
+    color: #1a202c !important;
+    font-weight: 500;
+}
+
+/* Melhorar contraste dos empty states */
+.empty-state {
+    color: #4a5568 !important;
+}
+
+.empty-state h3 {
+    color: #2d3748 !important;
+    font-weight: 600;
+}
+
+.empty-state i {
+    color: #cbd5e0 !important;
+}
+
+/* Garantir que os status badges tenham bom contraste */
+.status-badge {
+    font-weight: 600 !important;
+    border: 1px solid transparent;
+}
+
+.status-pendente {
+    background: #f6ad55 !important;
+    color: #744210 !important;
+    border-color: #ed8936;
+}
+
+.status-pago {
+    background: #68d391 !important;
+    color: #22543d !important;
+    border-color: #38a169;
+}
+
+.status-atrasado {
+    background: #fc8181 !important;
+    color: #742a2a !important;
+    border-color: #e53e3e;
+}
+
+.status-cancelado {
+    background: #a0aec0 !important;
+    color: #2d3748 !important;
+    border-color: #718096;
+}
