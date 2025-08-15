@@ -1078,7 +1078,7 @@ async function editAnotacao(anotacaoId) {
     }
 }
 
-// Função para editar faturamento (DAR BAIXA)
+// Função para editar faturamento (DAR BAIXA) - VERSÃO CORRIGIDA
 async function editFaturamento(faturamentoId) {
     try {
         const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
@@ -1128,7 +1128,7 @@ async function editFaturamento(faturamentoId) {
             try {
                 await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
                 closeModal();
-                showNotification('Faturamento atualizado com sucesso!', 'success');
+                alert('Faturamento atualizado com sucesso!');
                 
                 // Recarregar dados dependendo da aba atual
                 if (currentTab === 'faturamento') {
@@ -1137,14 +1137,15 @@ async function editFaturamento(faturamentoId) {
                     loadClientDetail(currentClient.id);
                 }
             } catch (error) {
-                showNotification('Erro ao atualizar faturamento', 'error');
+                alert('Erro ao atualizar faturamento');
             }
         });
         
     } catch (error) {
-        showNotification('Erro ao carregar dados do faturamento', 'error');
+        alert('Erro ao carregar dados do faturamento');
     }
 }
+
 
 
 // Helper functions
