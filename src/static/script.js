@@ -1078,13 +1078,14 @@ async function editAnotacao(anotacaoId) {
     }
 }
 
-// Função para editar faturamento (DAR BAIXA) - VERSÃO SEM SHOWNOTIFICATION
+
+// Função para editar faturamento (DAR BAIXA) - VERSÃO COMPLETA E CORRIGIDA
 async function editFaturamento(faturamentoId) {
-    console.log('Iniciando edição do faturamento:', faturamentoId);
+    console.log("Iniciando edição do faturamento:", faturamentoId);
     
     try {
         const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
-        console.log('Dados do faturamento carregados:', faturamento);
+        console.log("Dados do faturamento carregados:", faturamento);
         
         const content = `
             <form id="edit-faturamento-form">
@@ -1116,45 +1117,44 @@ async function editFaturamento(faturamentoId) {
             </form>
         `;
         
-        showModal('Editar Faturamento', content);
+        showModal("Editar Faturamento", content);
         
-        document.getElementById('edit-faturamento-form').addEventListener('submit', async function(e) {
+        document.getElementById("edit-faturamento-form").addEventListener("submit", async function(e) {
             e.preventDefault();
-            console.log('Formulário de edição submetido');
+            console.log("Formulário de edição submetido");
             
             const data = {
-                descricao: document.getElementById('edit-faturamento-descricao').value,
-                valor: parseFloat(document.getElementById('edit-faturamento-valor').value),
-                data_vencimento: document.getElementById('edit-faturamento-vencimento').value,
-                status: document.getElementById('edit-faturamento-status').value
+                descricao: document.getElementById("edit-faturamento-descricao").value,
+                valor: parseFloat(document.getElementById("edit-faturamento-valor").value),
+                data_vencimento: document.getElementById("edit-faturamento-vencimento").value,
+                status: document.getElementById("edit-faturamento-status").value
             };
             
-            console.log('Dados para atualização:', data);
+            console.log("Dados para atualização:", data);
             
             try {
-                await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
+                await apiCall(`/faturamentos/${faturamentoId}`, "PUT", data);
                 closeModal();
-                alert('Faturamento atualizado com sucesso!');
-                console.log('Faturamento atualizado com sucesso');
+                alert("Faturamento atualizado com sucesso!");
+                console.log("Faturamento atualizado com sucesso");
                 
                 // Recarregar dados dependendo da aba atual
-                if (currentTab === 'faturamento') {
+                if (currentTab === "faturamento") {
                     loadFaturamentos();
                 } else if (currentClient) {
                     loadClientDetail(currentClient.id);
                 }
             } catch (error) {
-                console.error('Erro ao atualizar faturamento:', error);
-                alert('Erro ao atualizar faturamento: ' + error.message);
+                console.error("Erro ao atualizar faturamento:", error);
+                alert("Erro ao atualizar faturamento: " + error.message);
             }
         });
         
     } catch (error) {
-        console.error('Erro ao carregar dados do faturamento:', error);
-        alert('Erro ao carregar dados do faturamento: ' + error.message);
+        console.error("Erro ao carregar dados do faturamento:", error);
+        alert("Erro ao carregar dados do faturamento: " + error.message);
     }
 }
-
 
 
 
