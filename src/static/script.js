@@ -1080,8 +1080,11 @@ async function editAnotacao(anotacaoId) {
 
 // Função para editar faturamento (DAR BAIXA) - VERSÃO SEM SHOWNOTIFICATION
 async function editFaturamento(faturamentoId) {
+    console.log('Iniciando edição do faturamento:', faturamentoId);
+    
     try {
         const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
+        console.log('Dados do faturamento carregados:', faturamento);
         
         const content = `
             <form id="edit-faturamento-form">
@@ -1117,6 +1120,7 @@ async function editFaturamento(faturamentoId) {
         
         document.getElementById('edit-faturamento-form').addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('Formulário de edição submetido');
             
             const data = {
                 descricao: document.getElementById('edit-faturamento-descricao').value,
@@ -1125,10 +1129,13 @@ async function editFaturamento(faturamentoId) {
                 status: document.getElementById('edit-faturamento-status').value
             };
             
+            console.log('Dados para atualização:', data);
+            
             try {
                 await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
                 closeModal();
-                console.log('Faturamento atualizado com sucesso!');
+                alert('Faturamento atualizado com sucesso!');
+                console.log('Faturamento atualizado com sucesso');
                 
                 // Recarregar dados dependendo da aba atual
                 if (currentTab === 'faturamento') {
@@ -1136,21 +1143,18 @@ async function editFaturamento(faturamentoId) {
                 } else if (currentClient) {
                     loadClientDetail(currentClient.id);
                 }
-                
-                // Recarregar a página para garantir que as alterações sejam visíveis
-                window.location.reload();
-                
             } catch (error) {
                 console.error('Erro ao atualizar faturamento:', error);
-                alert('Erro ao atualizar faturamento');
+                alert('Erro ao atualizar faturamento: ' + error.message);
             }
         });
         
     } catch (error) {
         console.error('Erro ao carregar dados do faturamento:', error);
-        alert('Erro ao carregar dados do faturamento');
+        alert('Erro ao carregar dados do faturamento: ' + error.message);
     }
 }
+
 
 
 
