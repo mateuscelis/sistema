@@ -1176,14 +1176,14 @@ function formatDateTime(dateTimeString) {
     return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 }
 
+// Função para exibir notificações (VERSÃO CORRIGIDA)
 function showNotification(message, type) {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.className = `notification ${type} show`;
-    setTimeout(() => {
-        notification.className = 'notification';
-    }, 3000);
+    // Esta versão usa alert() para garantir que a notificação funcione
+    // sem depender de um elemento HTML específico.
+    console.log(`Notificação (${type}): ${message}`);
+    alert(message);
 }
+
 
 // Edit functions (placeholders)
 function editProduto(id) {
