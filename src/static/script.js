@@ -1078,7 +1078,7 @@ async function editAnotacao(anotacaoId) {
     }
 }
 
-// Função para editar faturamento (DAR BAIXA) - VERSÃO CORRIGIDA
+// Função para editar faturamento (DAR BAIXA) - VERSÃO SEM SHOWNOTIFICATION
 async function editFaturamento(faturamentoId) {
     try {
         const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
@@ -1128,7 +1128,7 @@ async function editFaturamento(faturamentoId) {
             try {
                 await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
                 closeModal();
-                alert('Faturamento atualizado com sucesso!');
+                console.log('Faturamento atualizado com sucesso!');
                 
                 // Recarregar dados dependendo da aba atual
                 if (currentTab === 'faturamento') {
@@ -1136,15 +1136,22 @@ async function editFaturamento(faturamentoId) {
                 } else if (currentClient) {
                     loadClientDetail(currentClient.id);
                 }
+                
+                // Recarregar a página para garantir que as alterações sejam visíveis
+                window.location.reload();
+                
             } catch (error) {
+                console.error('Erro ao atualizar faturamento:', error);
                 alert('Erro ao atualizar faturamento');
             }
         });
         
     } catch (error) {
+        console.error('Erro ao carregar dados do faturamento:', error);
         alert('Erro ao carregar dados do faturamento');
     }
 }
+
 
 
 
