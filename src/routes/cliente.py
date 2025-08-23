@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app
 from src.models.user import db
 from src.models.cliente import Cliente, ProdutoServico, Anotacao, Faturamento, ResumoMensal
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from sqlalchemy import and_, extract
 
 cliente_bp = Blueprint("cliente", __name__)
 
@@ -178,8 +179,8 @@ def create_faturamento(cliente_id):
             valor=data["valor"],
             data_vencimento=datetime.strptime(data["data_vencimento"], "%Y-%m-%d").date(),
             status=data.get("status", "pendente"),
-            tipo=data.get("tipo", "unico"),
-            recorrencia=data.get("recorrencia"),
+            tipo=data.get("tipo", "unico"), # Usando o campo 'tipo' do seu modelo
+            recorrencia=data.get("recorrencia"), # Usando o campo 'recorrencia' do seu modelo
             numero_parcelas=numero_parcelas,
             parcela_atual=data.get("parcela_atual", 1),
             faturamento_pai_id=data.get("faturamento_pai_id")
@@ -211,6 +212,9 @@ def update_faturamento(faturamento_id):
         faturamento.status = data["status"]
         if data["status"] == "pago" and not faturamento.data_pagamento:
             faturamento.data_pagamento = date.today()
+            # Lógica para gerar próximo faturamento recorrente
+            if faturamento.tipo != "unico": # Se não for único, tenta gerar recorrência
+                gerar_proximo_faturamento_recorrente(faturamento)
         elif data["status"] != "pago":
             faturamento.data_pagamento = None
     
@@ -225,6 +229,79 @@ def delete_faturamento(faturamento_id):
     db.session.commit()
     
     return "", 204
+
+# Nova função para gerar o próximo faturamento recorrente
+def gerar_proximo_faturamento_recorrente(faturamento_original):
+    # Se for um faturamento único ou se já atingiu o número máximo de parcelas
+    if faturamento_original.tipo == "unico" or \
+       (faturamento_original.tipo == "personalizado" and faturamento_original.numero_parcelas and faturamento_original.parcela_atual >= faturamento_original.numero_parcelas):
+        return
+
+    proxima_data_vencimento = None
+    
+    if faturamento_original.tipo == "recorrente":
+        if faturamento_original.recorrencia == "mensal":
+            data_venc = faturamento_original.data_vencimento
+            mes_novo = data_venc.month + 1
+            ano_novo = data_venc.year
+            if mes_novo > 12:
+                mes_novo = 1
+                ano_novo += 1
+            try:
+                proxima_data_vencimento = date(ano_novo, mes_novo, data_venc.day)
+            except ValueError:
+                proxima_data_vencimento = date(ano_novo, mes_novo, 1) + timedelta(days=-1) # Último dia do mês
+
+        elif faturamento_original.recorrencia == "anual":
+            proxima_data_vencimento = date(faturamento_original.data_vencimento.year + 1, 
+                                           faturamento_original.data_vencimento.month, 
+                                           faturamento_original.data_vencimento.day)
+        elif faturamento_original.recorrencia == "semanal":
+            proxima_data_vencimento = faturamento_original.data_vencimento + timedelta(weeks=1)
+        elif faturamento_original.recorrencia == "quinzenal":
+            proxima_data_vencimento = faturamento_original.data_vencimento + timedelta(weeks=2)
+
+    elif faturamento_original.tipo == "personalizado":
+        # Para faturamentos personalizados, a lógica de próxima data é mais complexa
+        # e depende de como você define a recorrência personalizada (ex: a cada X dias, ou datas específicas)
+        # Se você tiver uma lógica específica para a ser implementada aqui, me informe.
+        # Exemplo: Se for personalizado por número de parcelas e a data de vencimento for a cada 30 dias
+        if faturamento_original.numero_parcelas and faturamento_original.parcela_atual < faturamento_original.numero_parcelas:
+            proxima_data_vencimento = faturamento_original.data_vencimento + timedelta(days=30) # Exemplo: a cada 30 dias
+        else:
+            return # Não gera nova parcela se já atingiu o limite
+
+    
+    if proxima_data_vencimento:
+        # Verifica se já existe um faturamento para a próxima data de vencimento
+        # Isso evita duplicação caso a função seja chamada múltiplas vezes
+        faturamento_existente = Faturamento.query.filter(
+            Faturamento.cliente_id == faturamento_original.cliente_id,
+            Faturamento.descricao == faturamento_original.descricao, # Ou outro critério único
+            Faturamento.valor == faturamento_original.valor,
+            Faturamento.data_vencimento == proxima_data_vencimento,
+            Faturamento.faturamento_pai_id == faturamento_original.id # Vincula ao faturamento original
+        ).first()
+
+        if not faturamento_existente:
+            novo_faturamento = Faturamento(
+                cliente_id=faturamento_original.cliente_id,
+                produto_servico_id=faturamento_original.produto_servico_id,
+                descricao=faturamento_original.descricao,
+                valor=faturamento_original.valor,
+                data_vencimento=proxima_data_vencimento,
+                status="pendente",
+                tipo=faturamento_original.tipo, # Mantém o tipo
+                recorrencia=faturamento_original.recorrencia, # Mantém a recorrência
+                numero_parcelas=faturamento_original.numero_parcelas, # Mantém o mesmo número de parcelas se houver
+                parcela_atual=(faturamento_original.parcela_atual + 1) if faturamento_original.parcela_atual else 1,
+                faturamento_pai_id=faturamento_original.id # Referência ao faturamento que gerou este
+            )
+            db.session.add(novo_faturamento)
+            db.session.commit()
+            current_app.logger.info(f"Novo faturamento recorrente gerado: {novo_faturamento.id} para o cliente {novo_faturamento.cliente_id}")
+        else:
+            current_app.logger.info(f"Faturamento recorrente para {proxima_data_vencimento} já existe para o faturamento original {faturamento_original.id}")
 
 # Rota para estatísticas do dashboard
 @cliente_bp.route("/dashboard/stats", methods=["GET"])
