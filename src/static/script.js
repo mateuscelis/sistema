@@ -239,97 +239,78 @@ async function loadClientes() {
     }
 }
 
+// Dashboard - VERSÃO CORRIGIDA
+async function loadDashboardData() {
+    try {
+        const stats = await apiCall(`/resumo-mensal?mes=${currentDashboardMonth}&ano=${currentDashboardYear}`);
+        
+        // Verificar se os elementos existem antes de modificá-los
+        const aReceberEl = document.getElementById('a-receber');
+        const vencidoEl = document.getElementById('vencido');
+        const recebidoEl = document.getElementById('recebido');
+        const canceladoEl = document.getElementById('cancelado');
+        
+        if (aReceberEl) aReceberEl.textContent = formatCurrency(stats.total_pendente || 0);
+        if (vencidoEl) vencidoEl.textContent = formatCurrency(stats.total_vencido || 0);
+        if (recebidoEl) recebidoEl.textContent = formatCurrency(stats.total_recebido || 0);
+        if (canceladoEl) canceladoEl.textContent = formatCurrency(stats.total_cancelado || 0);
+
+        // Atualizar título do mês
+        const titleEl = document.getElementById('dashboard-month-title');
+        if (titleEl) {
+            const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                               'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            titleEl.textContent = `${monthNames[currentDashboardMonth - 1]} ${currentDashboardYear}`;
+        }
+        
+    } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
+        alert('Erro ao carregar dados do dashboard');
+    }
+}
+
+// Faturamentos - VERSÃO CORRIGIDA
 async function loadFaturamentos() {
     try {
         const faturamentos = await apiCall('/faturamentos');
-        const faturamentoTableBody = document.getElementById('faturamento-table-body');
-        faturamentoTableBody.innerHTML = '';
-        faturamentos.forEach(faturamento => {
-            const row = faturamentoTableBody.insertRow();
-            row.insertCell(0).textContent = faturamento.cliente_nome || 'N/A';
-            row.insertCell(1).textContent = faturamento.descricao;
-            row.insertCell(2).textContent = formatCurrency(faturamento.valor);
-            row.insertCell(3).textContent = formatDate(faturamento.data_vencimento);
-            row.insertCell(4).innerHTML = `<span class="status-badge status-${faturamento.status}">${faturamento.status.toUpperCase()}</span>`;
-            const actionsCell = row.insertCell(5);
-            actionsCell.innerHTML = `
-                <button class="btn btn-edit" onclick="editFaturamento(${faturamento.id})"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-delete" onclick="deleteFaturamento(${faturamento.id})"><i class="fas fa-trash"></i></button>
-            `;
-        });
+        const tbody = document.getElementById('faturamentos-tbody');
+        
+        if (!tbody) {
+            console.error('Elemento faturamentos-tbody não encontrado');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+
+        if (faturamentos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum faturamento encontrado</td></tr>';
+        } else {
+            faturamentos.forEach(fat => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${fat.cliente_nome || 'Cliente não encontrado'}</td>
+                    <td>${fat.descricao}</td>
+                    <td>${formatCurrency(fat.valor)}</td>
+                    <td>${formatDate(fat.data_vencimento)}</td>
+                    <td><span class="status-badge status-${fat.status}">${fat.status}</span></td>
+                    <td>
+                        <button class="btn-icon btn-edit" onclick="editFaturamento(${fat.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="deleteFaturamento(${fat.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     } catch (error) {
         console.error('Erro ao carregar faturamentos:', error);
-        showNotification('Erro ao carregar faturamentos', 'error');
+        alert('Erro ao carregar faturamentos');
     }
 }
 
-async function loadClientDetail(clientId) {
-    try {
-        const client = await apiCall(`/clientes/${clientId}`);
-        currentClient = client;
-        document.getElementById('client-detail-name').textContent = client.nome;
-        document.getElementById('client-detail-contact').textContent = client.contato;
-        document.getElementById('client-detail-email').textContent = client.email;
-        document.getElementById('client-detail-phone').textContent = client.telefone;
-
-        // Load products/services
-        const produtosList = document.getElementById('client-produtos-list');
-        produtosList.innerHTML = '';
-        client.produtos.forEach(produto => {
-            const li = document.createElement('li');
-            li.className = 'produto-item';
-            li.innerHTML = `
-                <p>${produto.nome} - ${formatCurrency(produto.valor)}</p>
-                <div class="item-actions">
-                    <button class="btn btn-edit" onclick="showEditProdutoModal(${produto.id})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete" onclick="deleteProduto(${produto.id})"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            produtosList.appendChild(li);
-        });
-
-        // Load annotations
-        const anotacoesList = document.getElementById('client-anotacoes-list');
-        anotacoesList.innerHTML = '';
-        client.anotacoes.forEach(anotacao => {
-            const li = document.createElement('li');
-            li.className = 'anotacao-item';
-            li.innerHTML = `
-                <h4>${anotacao.titulo}</h4>
-                <p class="anotacao-conteudo">${anotacao.conteudo}</p>
-                <span class="anotacao-data">${formatDateTime(anotacao.data_criacao)}</span>
-                <div class="item-actions">
-                    <button class="btn btn-edit" onclick="showEditAnotacaoModal(${anotacao.id})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete" onclick="deleteAnotacao(${anotacao.id})"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            anotacoesList.appendChild(li);
-        });
-
-        // Load faturamentos for client
-        const clientFaturamentosList = document.getElementById('client-faturamentos-list');
-        clientFaturamentosList.innerHTML = '';
-        client.faturamentos.forEach(faturamento => {
-            const li = document.createElement('li');
-            li.className = 'faturamento-item';
-            li.innerHTML = `
-                <p>${faturamento.descricao} - ${formatCurrency(faturamento.valor)} - ${formatDate(faturamento.data_vencimento)} - <span class="status-badge status-${faturamento.status}">${faturamento.status.toUpperCase()}</span></p>
-                <div class="item-actions">
-                    <button class="btn btn-edit" onclick="editFaturamento(${faturamento.id})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete" onclick="deleteFaturamento(${faturamento.id})"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            clientFaturamentosList.appendChild(li);
-        });
-
-        document.getElementById('clientes-section').classList.remove('active');
-        document.getElementById('client-detail-section').classList.add('active');
-
-    } catch (error) {
-        console.error('Erro ao carregar detalhes do cliente:', error);
-        showNotification('Erro ao carregar detalhes do cliente', 'error');
-    }
-}
 
 // Funções de Modal e Formulário
 function showNovoClienteModal() {
@@ -558,9 +539,13 @@ async function showNovoFaturamentoModal() {
     }
 }
 
+// Função para editar faturamento - VERSÃO FINAL CORRIGIDA
 async function editFaturamento(faturamentoId) {
+    console.log('Iniciando edição do faturamento:', faturamentoId);
+    
     try {
         const faturamento = await apiCall(`/faturamentos/${faturamentoId}`);
+        console.log('Dados do faturamento carregados:', faturamento);
         
         const content = `
             <form id="edit-faturamento-form">
@@ -578,111 +563,48 @@ async function editFaturamento(faturamentoId) {
                 </div>
                 <div class="form-group">
                     <label for="edit-faturamento-status">Status</label>
-                    <select id="edit-faturamento-status">
+                    <select id="edit-faturamento-status" required>
                         <option value="pendente" ${faturamento.status === 'pendente' ? 'selected' : ''}>Pendente</option>
                         <option value="pago" ${faturamento.status === 'pago' ? 'selected' : ''}>Pago</option>
                         <option value="atrasado" ${faturamento.status === 'atrasado' ? 'selected' : ''}>Atrasado</option>
                         <option value="cancelado" ${faturamento.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="edit-tipo-faturamento">Tipo de Faturamento</label>
-                    <select id="edit-tipo-faturamento">
-                        <option value="unico" ${faturamento.tipo === 'unico' ? 'selected' : ''}>Único</option>
-                        <option value="recorrente" ${faturamento.tipo === 'recorrente' ? 'selected' : ''}>Recorrente</option>
-                        <option value="personalizado" ${faturamento.tipo === 'personalizado' ? 'selected' : ''}>Personalizado</option>
-                    </select>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
                 </div>
-                <div class="form-group" id="edit-recorrencia-group" style="display: ${faturamento.tipo === 'recorrente' ? 'block' : 'none'};
-">
-                    <label for="edit-recorrencia">Recorrência</label>
-                    <select id="edit-recorrencia">
-                        <option value="mensal" ${faturamento.recorrencia === 'mensal' ? 'selected' : ''}>Mensal</option>
-                        <option value="anual" ${faturamento.recorrencia === 'anual' ? 'selected' : ''}>Anual</option>
-                        <option value="semanal" ${faturamento.recorrencia === 'semanal' ? 'selected' : ''}>Semanal</option>
-                        <option value="quinzenal" ${faturamento.recorrencia === 'quinzenal' ? 'selected' : ''}>Quinzenal</option>
-                    </select>
-                </div>
-                <div class="form-group" id="edit-numero-parcelas-group" style="display: ${faturamento.tipo === 'personalizado' ? 'block' : 'none'};
-">
-                    <label for="edit-numero-parcelas">Número de Parcelas</label>
-                    <input type="number" id="edit-numero-parcelas" min="2" value="${faturamento.numero_parcelas || ''}">
-                </div>
-                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
             </form>
         `;
-        openModal('Editar Faturamento', content);
-
-        const editTipoFaturamentoSelect = document.getElementById('edit-tipo-faturamento');
-        const editRecorrenciaGroup = document.getElementById('edit-recorrencia-group');
-        const editNumeroParcelasGroup = document.getElementById('edit-numero-parcelas-group');
-
-        editTipoFaturamentoSelect.addEventListener('change', function() {
-            if (this.value === 'recorrente') {
-                editRecorrenciaGroup.style.display = 'block';
-                editNumeroParcelasGroup.style.display = 'none';
-            } else if (this.value === 'personalizado') {
-                editRecorrenciaGroup.style.display = 'none';
-                editNumeroParcelasGroup.style.display = 'block';
-            } else {
-                editRecorrenciaGroup.style.display = 'none';
-                editNumeroParcelasGroup.style.display = 'none';
-            }
-        });
-
+        
+        showModal('Editar Faturamento', content);
+        
         document.getElementById('edit-faturamento-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const tipoFaturamento = editTipoFaturamentoSelect.value;
+            
             const data = {
                 descricao: document.getElementById('edit-faturamento-descricao').value,
                 valor: parseFloat(document.getElementById('edit-faturamento-valor').value),
                 data_vencimento: document.getElementById('edit-faturamento-vencimento').value,
-                status: document.getElementById('edit-faturamento-status').value,
-                tipo: tipoFaturamento
+                status: document.getElementById('edit-faturamento-status').value
             };
-
-            if (tipoFaturamento === 'recorrente') {
-                data.recorrencia = document.getElementById('edit-recorrencia').value;
-            } else if (tipoFaturamento === 'personalizado') {
-                data.numero_parcelas = parseInt(document.getElementById('edit-numero-parcelas').value);
-            }
             
-            // Manter parcela_atual e faturamento_pai_id se existirem e forem relevantes
-            if (faturamento.parcela_atual) data.parcela_atual = faturamento.parcela_atual;
-            if (faturamento.faturamento_pai_id) data.faturamento_pai_id = faturamento.faturamento_pai_id;
-
             try {
                 await apiCall(`/faturamentos/${faturamentoId}`, 'PUT', data);
                 closeModal();
-                showNotification('Faturamento atualizado com sucesso!', 'success');
+                alert('Faturamento atualizado com sucesso!');
                 loadFaturamentos();
-                if (currentClient) {
-                    loadClientDetail(currentClient.id);
-                }
             } catch (error) {
-                showNotification('Erro ao atualizar faturamento', 'error');
+                alert('Erro ao atualizar faturamento: ' + error.message);
             }
         });
         
     } catch (error) {
-        showNotification('Erro ao carregar dados do faturamento', 'error');
+        console.error('Erro ao carregar dados do faturamento:', error);
+        alert('Erro ao carregar dados do faturamento: ' + error.message);
     }
 }
 
-async function deleteFaturamento(faturamentoId) {
-    if (confirm('Tem certeza que deseja excluir este faturamento?')) {
-        try {
-            await apiCall(`/faturamentos/${faturamentoId}`, 'DELETE');
-            showNotification('Faturamento excluído com sucesso!', 'success');
-            loadFaturamentos();
-            if (currentClient) {
-                loadClientDetail(currentClient.id);
-            }
-        } catch (error) {
-            showNotification('Erro ao excluir faturamento', 'error');
-        }
-    }
-}
 
 async function showNovoProdutoModal() {
     const content = `
