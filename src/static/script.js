@@ -2,6 +2,8 @@
 let currentTab = 'dashboard';
 let currentClient = null;
 let currentDetailTab = 'info';
+let currentDashboardMonth = new Date().getMonth() + 1;
+let currentDashboardYear = new Date().getFullYear();
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
